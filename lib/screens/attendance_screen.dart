@@ -22,7 +22,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void load() async {
     final token = await Storage.getToken();
     final result =
-    await ApiService.getAttendance(widget.serviceId, token!);
+    await ApiService.getAttendance(widget.serviceId);
 
     setState(() => data = result);
   }

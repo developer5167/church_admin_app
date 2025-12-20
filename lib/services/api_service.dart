@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'package:church_admin_app/utils/storage.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = 'http://YOUR_SERVER_IP:4000/api';
+    static const String baseUrl = 'http://172.20.10.2:4000/api';
 
   static Future<String> adminLogin(
       String username, String password) async {
@@ -25,8 +26,9 @@ class ApiService {
   static Future<String> createEvent(
       String name,
       String date,
-      String token,
       ) async {
+    final token = await Storage.getToken();
+
     final response = await http.post(
       Uri.parse('$baseUrl/admin/event'),
       headers: {
@@ -50,8 +52,9 @@ class ApiService {
       String eventId,
       String serviceCode,
       String serviceTime,
-      String token,
       ) async {
+    final token = await Storage.getToken();
+
     final response = await http.post(
       Uri.parse('$baseUrl/admin/service'),
       headers: {
@@ -73,8 +76,8 @@ class ApiService {
   }
   static Future<Map<String, dynamic>> getAttendance(
       String serviceId,
-      String token,
       ) async {
+    final token = await Storage.getToken();
     final response = await http.get(
       Uri.parse('$baseUrl/admin/attendance/service/$serviceId'),
       headers: {'Authorization': 'Bearer $token'},
@@ -83,4 +86,48 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  static Future<List<dynamic>> getEvents() async {
+    final token = await Storage.getToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/admin/events'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch events');
+    }
+
+    return jsonDecode(response.body);
+  }
+
+  static Future<List<dynamic>> getEventsByDate(String date) async {
+    final token = await Storage.getToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/admin/events/by-date?date=$date'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch events for date $date');
+    }
+
+    return jsonDecode(response.body);
+  }
+
+  static Future<String> exportAttendanceCSV(String eventId) async {
+    final token = await Storage.getToken();
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/admin/attendance/export/$eventId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to export CSV');
+    }
+
+    return response.body;
+  }
 }

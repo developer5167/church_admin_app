@@ -22,7 +22,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     final eventId = await ApiService.createEvent(
       nameCtrl.text,
       selectedDate.toIso8601String().split('T')[0],
-      token!,
     );
 
     setState(() => loading = false);

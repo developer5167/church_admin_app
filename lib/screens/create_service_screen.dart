@@ -26,7 +26,6 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       widget.eventId,
       codeCtrl.text,
       '${time!.hour.toString().padLeft(2, '0')}:${time!.minute.toString().padLeft(2, '0')}',
-      token!,
     );
 
     setState(() {
@@ -76,6 +75,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                     title: Text('Service QR'),
                     subtitle: Text(services[i]['qrUrl']),
                     trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.qr_code),
@@ -115,7 +115,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
               onPressed: () async {
                 final token = await Storage.getToken();
                 final url =
-                    'http://YOUR_SERVER_IP:4000/api/admin/attendance/export/${widget.eventId}';
+                    'http://172.20.10.2:4000/api/admin/attendance/export/${widget.eventId}';
 
                 // simplest approach for now
                 // open this URL in browser

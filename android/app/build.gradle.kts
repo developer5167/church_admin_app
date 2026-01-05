@@ -37,6 +37,15 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    flavorDimensions += "church"
+
+    productFlavors {
+        create("lordsChurchAdmin") {
+            dimension = "church"
+            applicationId = "com.church.lords.admin"
+            resValue("string", "church_flavor", "TLC Admin")
+        }
+    }
 }
 
 flutter {

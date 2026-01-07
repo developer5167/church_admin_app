@@ -1,10 +1,12 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:path/path.dart' as p;
+
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart' show Share, XFile;
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -99,33 +101,39 @@ class _QrViewScreenState extends State<QrViewScreen>
     }
   }
 
-  // Future<void> _shareQr() async {
-  //   if (_isSharing) return;
+  Future<void> _shareQr() async {
+    if (_isSharing) return;
 
-  //   HapticFeedback.mediumImpact();
-  //   setState(() => _isSharing = true);
+    HapticFeedback.mediumImpact();
+    setState(() => _isSharing = true);
 
-  //   try {
-  //     final bytes = await _captureQr();
-  //     if (bytes != null) {
-  //       await Share.file(
-  //         'Church Service QR Code',
-  //         'service_qr.png',
-  //         bytes,
-  //         'image/png',
-  //         text: 'Scan this QR code to register attendance for church service',
-  //       );
-  //       HapticFeedback.selectionClick();
-  //     } else {
-  //       throw 'Failed to capture QR code';
-  //     }
-  //   } catch (e) {
-  //     HapticFeedback.heavyImpact();
-  //     _showErrorDialog('Failed to share QR code: $e');
-  //   } finally {
-  //     setState(() => _isSharing = false);
-  //   }
-  // }
+    try {
+      final bytes = await _captureQr();
+      if (bytes == null) {
+        throw 'Failed to capture QR code';
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      final filePath = p.join(tempDir.path, 'service_qr.png');
+      final file = File(filePath);
+
+      await file.writeAsBytes(bytes);
+
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        text: 'Scan this QR code to register attendance for church service',
+      );
+
+      HapticFeedback.selectionClick();
+    } catch (e) {
+      HapticFeedback.heavyImpact();
+      _showErrorDialog('Failed to share QR code: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isSharing = false);
+      }
+    }
+  }
 
   void _copyQrUrl() {
     Clipboard.setData(ClipboardData(text: widget.qrUrl));
@@ -372,50 +380,50 @@ class _QrViewScreenState extends State<QrViewScreen>
                                     const SizedBox(height: 24),
 
                                     // QR URL Preview
-                                    GestureDetector(
-                                      onTap: _copyQrUrl,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[50],
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.grey[300]!,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                             Icon(
-                                              Icons.link,
-                                              color: FlavorConfig.instance.values.primaryColor,
-                                              size: 20,
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Text(
-                                                widget.qrUrl.length > 40
-                                                    ? '${widget.qrUrl.substring(0, 40)}...'
-                                                    : widget.qrUrl,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.black87,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                             Icon(
-                                              Icons.content_copy,
-                                              color: FlavorConfig.instance.values.primaryColor,
-                                              size: 20,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
+                                    // GestureDetector(
+                                    //   onTap: _copyQrUrl,
+                                    //   child: Container(
+                                    //     padding: const EdgeInsets.all(16),
+                                    //     decoration: BoxDecoration(
+                                    //       color: Colors.grey[50],
+                                    //       borderRadius: BorderRadius.circular(
+                                    //         16,
+                                    //       ),
+                                    //       border: Border.all(
+                                    //         color: Colors.grey[300]!,
+                                    //       ),
+                                    //     ),
+                                    //     child: Row(
+                                    //       children: [
+                                    //          Icon(
+                                    //           Icons.link,
+                                    //           color: FlavorConfig.instance.values.primaryColor,
+                                    //           size: 20,
+                                    //         ),
+                                    //         const SizedBox(width: 12),
+                                    //         Expanded(
+                                    //           child: Text(
+                                    //             widget.qrUrl.length > 40
+                                    //                 ? '${widget.qrUrl.substring(0, 40)}...'
+                                    //                 : widget.qrUrl,
+                                    //             style: const TextStyle(
+                                    //               fontSize: 14,
+                                    //               color: Colors.black87,
+                                    //             ),
+                                    //             overflow: TextOverflow.ellipsis,
+                                    //           ),
+                                    //         ),
+                                    //          Icon(
+                                    //           Icons.content_copy,
+                                    //           color: FlavorConfig.instance.values.primaryColor,
+                                    //           size: 20,
+                                    //         ),
+                                    //       ],
+                                    //     ),
+                                    //   ),
+                                    // ),
 
-                                    const SizedBox(height: 20),
+                                    // const SizedBox(height: 20),
 
                                     // Instructions
                                     Container(
@@ -515,60 +523,12 @@ class _QrViewScreenState extends State<QrViewScreen>
                                   const SizedBox(height: 24),
 
                                   // Share Button
-                                  // SizedBox(
-                                  //   width: double.infinity,
-                                  //   height: 56,
-                                  //   child: ElevatedButton.icon(
-                                  //     onPressed: _isSharing ? null : _shareQr,
-                                  //     icon: _isSharing
-                                  //         ? const SizedBox(
-                                  //             width: 16,
-                                  //             height: 16,
-                                  //             child: CircularProgressIndicator(
-                                  //               strokeWidth: 2,
-                                  //               color: Colors.white,
-                                  //             ),
-                                  //           )
-                                  //         : const Icon(
-                                  //             Icons.share,
-                                  //             color: Colors.white,
-                                  //             size: 22,
-                                  //           ),
-                                  //     label: Text(
-                                  //       _isSharing
-                                  //           ? 'Sharing...'
-                                  //           : 'Share QR Code',
-                                  //       style: const TextStyle(
-                                  //         fontSize: 16,
-                                  //         fontWeight: FontWeight.w600,
-                                  //         color: Colors.white,
-                                  //       ),
-                                  //     ),
-                                  //     style: ElevatedButton.styleFrom(
-                                  //       backgroundColor: const Color(
-                                  //         0xFF8B0000,
-                                  //       ),
-                                  //       disabledBackgroundColor:
-                                  //           Colors.grey[400],
-                                  //       shape: RoundedRectangleBorder(
-                                  //         borderRadius: BorderRadius.circular(
-                                  //           16,
-                                  //         ),
-                                  //       ),
-                                  //     ),
-                                  //   ),
-                                  // ),
-                                  const SizedBox(height: 16),
-
-                                  // Download Button
                                   SizedBox(
                                     width: double.infinity,
                                     height: 56,
                                     child: ElevatedButton.icon(
-                                      onPressed: _isDownloading
-                                          ? null
-                                          : _saveQrToGallery,
-                                      icon: _isDownloading
+                                      onPressed: _isSharing ? null : _shareQr,
+                                      icon: _isSharing
                                           ? const SizedBox(
                                               width: 16,
                                               height: 16,
@@ -578,14 +538,14 @@ class _QrViewScreenState extends State<QrViewScreen>
                                               ),
                                             )
                                           : const Icon(
-                                              Icons.download,
+                                              Icons.share,
                                               color: Colors.white,
                                               size: 22,
                                             ),
                                       label: Text(
-                                        _isDownloading
-                                            ? 'Downloading...'
-                                            : 'Download QR Code',
+                                        _isSharing
+                                            ? 'Sharing...'
+                                            : 'Share QR Code',
                                         style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
@@ -606,41 +566,89 @@ class _QrViewScreenState extends State<QrViewScreen>
                                       ),
                                     ),
                                   ),
-
                                   const SizedBox(height: 16),
 
+                                  // Download Button
+                                  // SizedBox(
+                                  //   width: double.infinity,
+                                  //   height: 56,
+                                  //   child: ElevatedButton.icon(
+                                  //     onPressed: _isDownloading
+                                  //         ? null
+                                  //         : _saveQrToGallery,
+                                  //     icon: _isDownloading
+                                  //         ? const SizedBox(
+                                  //             width: 16,
+                                  //             height: 16,
+                                  //             child: CircularProgressIndicator(
+                                  //               strokeWidth: 2,
+                                  //               color: Colors.white,
+                                  //             ),
+                                  //           )
+                                  //         : const Icon(
+                                  //             Icons.download,
+                                  //             color: Colors.white,
+                                  //             size: 22,
+                                  //           ),
+                                  //     label: Text(
+                                  //       _isDownloading
+                                  //           ? 'Downloading...'
+                                  //           : 'Download QR Code',
+                                  //       style: const TextStyle(
+                                  //         fontSize: 16,
+                                  //         fontWeight: FontWeight.w600,
+                                  //         color: Colors.white,
+                                  //       ),
+                                  //     ),
+                                  //     style: ElevatedButton.styleFrom(
+                                  //       backgroundColor: const Color(
+                                  //         0xFF8B0000,
+                                  //       ),
+                                  //       disabledBackgroundColor:
+                                  //           Colors.grey[400],
+                                  //       shape: RoundedRectangleBorder(
+                                  //         borderRadius: BorderRadius.circular(
+                                  //           16,
+                                  //         ),
+                                  //       ),
+                                  //     ),
+                                  //   ),
+                                  // ),
+
+                                  // const SizedBox(height: 16),
+
                                   // Copy URL Button
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 56,
-                                    child: OutlinedButton.icon(
-                                      onPressed: _copyQrUrl,
-                                      icon:  Icon(
-                                        Icons.content_copy,
-                                        color: FlavorConfig.instance.values.primaryColor,
-                                        size: 22,
-                                      ),
-                                      label:  Text(
-                                        'Copy QR URL',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: FlavorConfig.instance.values.primaryColor,
-                                        ),
-                                      ),
-                                      style: OutlinedButton.styleFrom(
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                        ),
-                                        side:  BorderSide(
-                                          color: FlavorConfig.instance.values.primaryColor,
-                                          width: 2,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                  // SizedBox(
+                                  //   width: double.infinity,
+                                  //   height: 56,
+                                  //   child: OutlinedButton.icon(
+                                  //     onPressed: _copyQrUrl,
+                                  //     icon:  Icon(
+                                  //       Icons.content_copy,
+                                  //       color: FlavorConfig.instance.values.primaryColor,
+                                  //       size: 22,
+                                  //     ),
+                                  //     label:  Text(
+                                  //       'Copy QR URL',
+                                  //       style: TextStyle(
+                                  //         fontSize: 16,
+                                  //         fontWeight: FontWeight.w600,
+                                  //         color: FlavorConfig.instance.values.primaryColor,
+                                  //       ),
+                                  //     ),
+                                  //     style: OutlinedButton.styleFrom(
+                                  //       shape: RoundedRectangleBorder(
+                                  //         borderRadius: BorderRadius.circular(
+                                  //           16,
+                                  //         ),
+                                  //       ),
+                                  //       side:  BorderSide(
+                                  //         color: FlavorConfig.instance.values.primaryColor,
+                                  //         width: 2,
+                                  //       ),
+                                  //     ),
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                             ),

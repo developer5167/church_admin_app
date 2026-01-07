@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'package:church_admin_app/utils/storage.dart';
 import 'package:http/http.dart' as http;
 
@@ -75,6 +76,8 @@ class ApiService {
       Uri.parse('$baseUrl/admin/attendance/service/$serviceId'),
       headers: {'Authorization': 'Bearer $token'},
     );
+
+    log("Attendance: ${response.body}");
 
     return jsonDecode(response.body);
   }

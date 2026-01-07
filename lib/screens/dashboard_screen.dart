@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 import 'package:church_admin_app/services/api_service.dart';
 import 'package:church_admin_app/utils/storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
@@ -143,7 +145,29 @@ class _DashboardScreenState extends State<DashboardScreen>
       loadData(date: picked);
     }
   }
+  Future<void> _exportCsvAndroid(String csvData, String fileName) async {
+    final tempDir = await getTemporaryDirectory();
+    final tempPath = p.join(tempDir.path, fileName);
+    final mediaStore = MediaStore();
+    await File(tempPath).writeAsString(csvData);
+    await mediaStore.saveFile(
+      tempFilePath: tempPath,
+      dirType: DirType.download,
+      dirName: DirName.download,
+    );
+  }
+  Future<void> _exportCsvIOS(String csvData, String fileName) async {
+    final tempDir = await getTemporaryDirectory();
+    final filePath = p.join(tempDir.path, fileName);
 
+    final file = File(filePath);
+    await file.writeAsString(csvData);
+
+    await Share.shareXFiles(
+      [XFile(filePath)],
+      text: 'Attendance CSV',
+    );
+  }
   Future<void> exportToCsv(dynamic event) async {
     if (exporting) return;
 
@@ -151,65 +175,50 @@ class _DashboardScreenState extends State<DashboardScreen>
     setState(() => exporting = true);
 
     try {
-      final csvData = await ApiService.exportAttendanceCSV(event['id']);
-      String filePath = '';
+      final String csvData =
+      await ApiService.exportAttendanceCSV(event['id']);
+
+      final String fileName = '${event['name']}_attendance.csv';
 
       if (Platform.isAndroid) {
-        var storageStatus = await Permission.storage.status;
-        if (!storageStatus.isGranted) {
-          storageStatus = await Permission.storage.request();
-        }
+        // 1. Write CSV to temp file
+        final tempDir = await getTemporaryDirectory();
+        final tempPath = p.join(tempDir.path, fileName);
+        await File(tempPath).writeAsString(csvData);
 
-        if (!storageStatus.isGranted) {
-          final mgr = await Permission.manageExternalStorage.request();
-          if (!mgr.isGranted) {
-            final directory = await getApplicationDocumentsDirectory();
-            filePath = p.join(
-              directory.path,
-              '${event['name']}_attendance.csv',
-            );
-          }
-        }
+        // 2. Save to PUBLIC Downloads using MediaStore
+        final mediaStore = MediaStore();
+        await MediaStore.ensureInitialized();
+        MediaStore.appFolder =FlavorConfig.instance.values.appName;
 
-        if (filePath.isEmpty) {
-          try {
-            final downloads = await getExternalStorageDirectories(
-              type: StorageDirectory.downloads,
-            );
-            String? downloadPath = downloads?.first.path;
-            if (downloadPath == null || downloadPath.isEmpty) {
-              downloadPath = '/storage/emulated/0/Download';
-            }
-            filePath = p.join(downloadPath, '${event['name']}_attendance.csv');
-          } catch (_) {
-            final directory = await getApplicationDocumentsDirectory();
-            filePath = p.join(
-              directory.path,
-              '${event['name']}_attendance.csv',
-            );
-          }
-        }
-
-        final file = File(filePath);
-        await file.create(recursive: true);
-        await file.writeAsString(csvData);
+        await mediaStore.saveFile(
+          tempFilePath: tempPath,
+          dirType: DirType.download,
+          dirName: DirName.download,
+        );
 
         HapticFeedback.selectionClick();
-        _showSuccessDialog('CSV exported successfully!\nSaved to: $filePath');
+        _showSuccessDialog('CSV exported to Downloads folder');
       } else if (Platform.isIOS) {
+        // iOS: Share sheet (only allowed way)
         final directory = await getTemporaryDirectory();
-        filePath = p.join(directory.path, '${event['name']}_attendance.csv');
+        final filePath = p.join(directory.path, fileName);
+
         final file = File(filePath);
         await file.writeAsString(csvData);
 
-        await Share.shareXFiles([
-          XFile(filePath),
-        ], text: 'Attendance CSV for ${event['name']}');
+        await Share.shareXFiles(
+          [XFile(filePath)],
+          text: 'Attendance CSV for ${event['name']}',
+        );
+
         HapticFeedback.selectionClick();
-        _showSuccessDialog('Share dialog opened to save CSV');
+        _showSuccessDialog('Choose where to save the CSV');
       } else {
+        // Fallback (desktop, etc.)
         final directory = await getApplicationDocumentsDirectory();
-        filePath = p.join(directory.path, '${event['name']}_attendance.csv');
+        final filePath = p.join(directory.path, fileName);
+
         final file = File(filePath);
         await file.writeAsString(csvData);
 
@@ -223,6 +232,108 @@ class _DashboardScreenState extends State<DashboardScreen>
       if (mounted) {
         setState(() => exporting = false);
       }
+    }
+  }
+
+
+  // Future<void> exportToCsv(dynamic event) async {
+  //   if (exporting) return;
+  //
+  //   HapticFeedback.mediumImpact();
+  //   setState(() => exporting = true);
+  //
+  //   try {
+  //     final csvData = await ApiService.exportAttendanceCSV(event['id']);
+  //     String filePath = '';
+  //
+  //     if (Platform.isAndroid) {
+  //       var storageStatus = await Permission.storage.status;
+  //       if (!storageStatus.isGranted) {
+  //         storageStatus = await Permission.storage.request();
+  //       }
+  //
+  //       if (!storageStatus.isGranted) {
+  //         final mgr = await Permission.manageExternalStorage.request();
+  //         if (!mgr.isGranted) {
+  //           final directory = await getApplicationDocumentsDirectory();
+  //           filePath = p.join(
+  //             directory.path,
+  //             '${event['name']}_attendance.csv',
+  //           );
+  //         }
+  //       }
+  //
+  //       if (filePath.isEmpty) {
+  //         try {
+  //           final downloads = await getExternalStorageDirectories(
+  //             type: StorageDirectory.downloads,
+  //           );
+  //           String? downloadPath = downloads?.first.path;
+  //           if (downloadPath == null || downloadPath.isEmpty) {
+  //             downloadPath = '/storage/emulated/0/Download';
+  //           }
+  //           filePath = p.join(downloadPath, '${event['name']}_attendance.csv');
+  //         } catch (_) {
+  //           final directory = await getApplicationDocumentsDirectory();
+  //           filePath = p.join(
+  //             directory.path,
+  //             '${event['name']}_attendance.csv',
+  //           );
+  //         }
+  //       }
+  //
+  //       final file = File(filePath);
+  //       await file.create(recursive: true);
+  //       await file.writeAsString(csvData);
+  //
+  //       HapticFeedback.selectionClick();
+  //       _showSuccessDialog('CSV exported successfully!\nSaved to: $filePath');
+  //     } else if (Platform.isIOS) {
+  //       final directory = await getTemporaryDirectory();
+  //       filePath = p.join(directory.path, '${event['name']}_attendance.csv');
+  //       final file = File(filePath);
+  //       await file.writeAsString(csvData);
+  //
+  //       await Share.shareXFiles([
+  //         XFile(filePath),
+  //       ], text: 'Attendance CSV for ${event['name']}');
+  //       HapticFeedback.selectionClick();
+  //       _showSuccessDialog('Share dialog opened to save CSV');
+  //     } else {
+  //       final directory = await getApplicationDocumentsDirectory();
+  //       filePath = p.join(directory.path, '${event['name']}_attendance.csv');
+  //       final file = File(filePath);
+  //       await file.writeAsString(csvData);
+  //
+  //       HapticFeedback.selectionClick();
+  //       _showSuccessDialog('CSV saved to Documents folder');
+  //     }
+  //   } catch (e) {
+  //     HapticFeedback.heavyImpact();
+  //     _showErrorDialog('Failed to export CSV: $e');
+  //   } finally {
+  //     if (mounted) {
+  //       setState(() => exporting = false);
+  //     }
+  //   }
+  // }
+  Future<void> exportToCsvUnified(
+      String csvData,
+      String eventName,
+      ) async {
+    final fileName = '${eventName}_attendance.csv';
+
+    if (Platform.isAndroid) {
+      await _exportCsvAndroid(csvData, fileName);
+      _showSuccessDialog('CSV saved to Downloads folder');
+    } else if (Platform.isIOS) {
+      await _exportCsvIOS(csvData, fileName);
+      _showSuccessDialog('Choose where to save the CSV');
+    } else {
+      final dir = await getApplicationDocumentsDirectory();
+      final filePath = p.join(dir.path, fileName);
+      await File(filePath).writeAsString(csvData);
+      _showSuccessDialog('CSV saved to Documents');
     }
   }
 
@@ -778,6 +889,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           itemBuilder: (context, index) {
             final event = events![index];
             final services = event['services'] as List<dynamic>;
+            log("Attendance>>>> $events");
 
             return _buildEventCard(event, services, index);
           },
@@ -877,25 +989,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                           style: TextStyle(
                             fontSize: 12,
                             color: FlavorConfig.instance.values.primaryColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '$totalAttendees Attendees',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.green[700],
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1126,7 +1219,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         loadData(date: date);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
               ? FlavorConfig.instance.values.primaryColor

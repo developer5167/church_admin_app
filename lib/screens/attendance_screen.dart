@@ -399,6 +399,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
   Widget _buildFilterChip(String label, String value) {
     final isSelected = filterType == value;
     return ChoiceChip(
+
       label: Text(label),
       selected: isSelected,
       onSelected: (selected) {
@@ -411,6 +412,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         color: isSelected ? Colors.white : Colors.black87,
         fontWeight: FontWeight.w500,
       ),
+      checkmarkColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
@@ -469,16 +471,16 @@ class _AttendanceScreenState extends State<AttendanceScreen>
                   ),
                   decoration: BoxDecoration(
                     color: attendee['member_type'] == 'regular'
-                        ?  FlavorConfig.instance.values.primaryColor.withOpacity(0.1)
+                        ?  Colors.green.withValues(alpha: 0.5)
                         : Colors.blue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    attendee['member_type'] == 'regular'
+                    attendee['member_type'].toString().toLowerCase() == 'regular'.toLowerCase()
                         ? 'Regular Member'
                         : 'Guest',
                     style: TextStyle(
-                      color: attendee['member_type'] == 'regular'
+                      color: attendee['member_type'].toString().toLowerCase() == 'regular'.toLowerCase()
                           ?  FlavorConfig.instance.values.primaryColor
                           : Colors.blue,
                       fontSize: 12,
@@ -508,53 +510,57 @@ class _AttendanceScreenState extends State<AttendanceScreen>
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.people_outline, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 20),
-          Text(
-            searchQuery.isNotEmpty
-                ? 'No matching attendees found'
-                : 'No attendance recorded yet',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline, size: 80, color: Colors.grey[300]),
+            const SizedBox(height: 20),
+            Text(
+              searchQuery.isNotEmpty
+                  ? 'No matching attendees found'
+                  : 'No attendance recorded yet',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            searchQuery.isNotEmpty
-                ? 'Try a different search term'
-                : 'Attendance will appear here',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-          ),
-          const SizedBox(height: 20),
-          if (searchQuery.isNotEmpty)
-            ElevatedButton(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                setState(() => searchQuery = '');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor:  FlavorConfig.instance.values.primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 8),
+            Text(
+              searchQuery.isNotEmpty
+                  ? 'Try a different search term'
+                  : 'Attendance will appear here',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 20),
+            if (searchQuery.isNotEmpty)
+              ElevatedButton(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => searchQuery = '');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:  FlavorConfig.instance.values.primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Clear Search',
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
-              child: const Text(
-                'Clear Search',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   void _showAttendeeDetails(Map<String, dynamic> attendee) {
     showModalBottomSheet(
+      isScrollControlled: true,
+      isDismissible: true,
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

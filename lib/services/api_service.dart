@@ -4,9 +4,9 @@ import 'package:church_admin_app/utils/storage.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // static const String baseUrl = 'http://65.0.89.36:4000/api';//live
+  static const String baseUrl = 'http://13.201.163.103:4000/api';//live
   // static const String baseUrl = 'http://172.20.10.2:4000/api';//local
-  static const String baseUrl = 'http://192.168.15.187:4000/api'; //office
+  // static const String baseUrl = 'http://192.168.15.187:4000/api'; //office
   // static const String baseUrl = 'http://192.168.31.196:4000/api'; //home
 
   static Future<String> adminLogin(String username, String password) async {
